@@ -240,6 +240,11 @@ def train_model(dataset_path, train_eval_split):
     outfile_path = os.path.join(output_dir, "eval.stats")
     write_stats(outfile_path, "\n".join(stats))
 
+# Save the trained model in serialized format
+    model_save_path = os.path.join(output_dir, "model.keras")
+    dnn_model.save(model_save_path)
+    print("===== saved model : " + model_save_path)
+
 # Plot CDF Figures
     # original column names without the "reject" column
     columns = dataset.columns.to_list()
