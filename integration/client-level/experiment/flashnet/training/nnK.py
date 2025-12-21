@@ -155,13 +155,30 @@ def train_model(dataset_path, train_eval_split):
 
 # Model Architecture
     stats = []
-    dnn_model = keras.Sequential([
-        # normalizer,
-        layers.Dense(128, activation='relu', input_dim=x_train.shape[1]),     # adopt a smaller 2nd layer
-        layers.Dense(16, activation='relu'),    # adopt a smaller 3rd layer
-        layers.Dense(1, activation='sigmoid')
-    ])
+    # dnn_model = keras.Sequential([
+    #     # normalizer,
+    #     layers.Dense(128, activation='relu', input_dim=x_train.shape[1]),     # adopt a smaller 2nd layer
+    #     layers.Dense(16, activation='relu'),    # adopt a smaller 3rd layer
+    #     layers.Dense(1, activation='sigmoid')
+    # ])
     
+    dnn_model = keras.Sequential([
+        # Layer 0: Linear Transformation
+        layers.Dense(128, input_dim=x_train.shape[1], name="dense_1"),
+        # Layer 1: ReLU Activation
+        layers.Activation('relu', name="relu_1"),
+        
+        # Layer 2: Linear Transformation
+        layers.Dense(16, name="dense_2"),
+        # Layer 3: ReLU Activation
+        layers.Activation('relu', name="relu_2"),
+        
+        # Layer 4: Linear Transformation
+        layers.Dense(1, name="dense_3"),
+        # Layer 5: Sigmoid Activation
+        layers.Activation('sigmoid', name="sigmoid_out")
+    ])
+
     # dnn_model.compile(loss='binary_crossentropy', optimizer=keras.optimizers.Adam(learning_rate=0.0001), metrics=['accuracy'])
     dnn_model.compile(loss='binary_crossentropy', optimizer=keras.optimizers.Adam(learning_rate=0.001), metrics=['accuracy'])
     model_summ = []
@@ -271,15 +288,17 @@ def train_model(dataset_path, train_eval_split):
     np.savetxt(name_b, biases, delimiter=',')
     count = 1
     for layer in dnn_model.layers:
-        weights = layer.get_weights()[0]
-        biases = layer.get_weights()[1]
-        # name = output_dir +'/weight_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_weightcustom1_' + str(count) + '.csv'
-        # name_b = output_dir + '/bias_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_biascustom1_' + str(count) + '.csv'
-        name = dataset_path +'.weight_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_weightcustom1_' + str(count) + '.csv'
-        name_b = dataset_path + '.bias_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_biascustom1_' + str(count) + '.csv'
-        np.savetxt(name, weights, delimiter=',')
-        np.savetxt(name_b, biases, delimiter=',')
-        count += 1
+        layer_weights = layer.get_weights()
+        if len(layer_weights) > 0: # Check if it's a Dense layer
+            weights = layer_weights[0]
+            biases = layer_weights[1]
+            # name = output_dir +'/weight_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_weightcustom1_' + str(count) + '.csv'
+            # name_b = output_dir + '/bias_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_biascustom1_' + str(count) + '.csv'
+            name = dataset_path +'.weight_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_weightcustom1_' + str(count) + '.csv'
+            name_b = dataset_path + '.bias_' + str(count) + '.csv' #output_dir_path+'/SSD_31col_iteration_'+str(i)+'_biascustom1_' + str(count) + '.csv'
+            np.savetxt(name, weights, delimiter=',')
+            np.savetxt(name_b, biases, delimiter=',')
+            count += 1
 
     
 
