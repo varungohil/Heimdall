@@ -1,0 +1,10 @@
+numpy
+pandas
+matplotlib
+scikit-learn
+statsmodels
+tensorflow
+auto-sklearn
+bokeh
+seaborn
+gdown
