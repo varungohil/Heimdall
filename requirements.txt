@@ -1,10 +1,12 @@
 numpy
 pandas
+gplearn
 matplotlib
 scikit-learn
 statsmodels
 tensorflow
-auto-sklearn
 bokeh
 seaborn
 gdown
+ollama
+auto-sklearn
