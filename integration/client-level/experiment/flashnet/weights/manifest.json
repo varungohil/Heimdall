@@ -1,0 +1,64 @@
+{
+  "models": [
+    {
+      "id": "weights_000",
+      "label": "alibaba.per_3mins.iops_p10.ali.. / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_000.json"
+    },
+    {
+      "id": "weights_001",
+      "label": "alibaba.per_3mins.iops_p10.ali.. / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_001.json"
+    },
+    {
+      "id": "weights_002",
+      "label": "alibaba.per_3mins.iops_p10.ali.. / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_002.json"
+    },
+    {
+      "id": "weights_003",
+      "label": "alibaba.per_3mins.iops_p10.ali.. / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_003.json"
+    },
+    {
+      "id": "weights_004",
+      "label": "alibaba.per_3mins.iops_p75.ali.. / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_004.json"
+    },
+    {
+      "id": "weights_005",
+      "label": "alibaba.per_3mins.iops_p75.ali.. / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_005.json"
+    },
+    {
+      "id": "weights_006",
+      "label": "alibaba.per_3mins.iops_p75.ali.. / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_006.json"
+    },
+    {
+      "id": "weights_007",
+      "label": "alibaba.per_3mins.iops_p75.ali.. / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_007.json"
+    },
+    {
+      "id": "weights_008",
+      "label": "alibaba.per_3mins.overall_p25... / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_008.json"
+    },
+    {
+      "id": "weights_009",
+      "label": "alibaba.per_3mins.overall_p25... / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_009.json"
+    },
+    {
+      "id": "weights_010",
+      "label": "msr.per_3mins.overall_p50.prxy.. / nvme0n1...nvme1n1 / mldrive0",
+      "file": "weights_010.json"
+    },
+    {
+      "id": "weights_011",
+      "label": "msr.per_3mins.overall_p50.prxy.. / nvme0n1...nvme1n1 / mldrive1",
+      "file": "weights_011.json"
+    }
+  ]
+}

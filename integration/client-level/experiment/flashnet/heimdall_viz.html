@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heimdall Model Architecture — Interactive Visualization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #388bfd33;
+      --neuron-low: #21262d;
+      --neuron-mid: #238636;
+      --neuron-high: #3fb950;
+      --reject: #f85149;
+      --accept: #3fb950;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      overflow-y: auto;
+    }
+
+    .sidebar h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    .sidebar p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .input-group {
+      margin-bottom: 1rem;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim);
+    }
+
+    .input-group select {
+      width: 100%;
+      padding: 0.5rem 0.6rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .input-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .main {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+
+    .viz-container {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    .output-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .output-badge.accept {
+      background: rgba(63, 185, 80, 0.2);
+      color: var(--accept);
+      border: 1px solid var(--accept);
+    }
+
+    .output-badge.reject {
+      background: rgba(248, 81, 73, 0.2);
+      color: var(--reject);
+      border: 1px solid var(--reject);
+    }
+
+    .output-prob {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      margin-top: 0.2rem;
+    }
+
+    #network-canvas {
+      display: block;
+      border-radius: 8px;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .legend-swatch {
+      width: 24px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .load-weights {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .load-weights input[type="file"] {
+      font-size: 0.75rem;
+      margin-top: 0.3rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <h1>HEIMDALL</h1>
+      <p>FlashNet IO routing model. Adjust inputs to see neuron activations update in real time.</p>
+
+      <div class="input-group">
+        <label>Model</label>
+        <select id="model-select">
+          <option value="">Loading...</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>queue_len</label>
+        <input type="number" id="queue_len" value="2" min="0" step="1">
+      </div>
+      <div class="input-group">
+        <label>io_type (0=write, 1=read)</label>
+        <input type="number" id="io_type" value="1" min="0" max="1" step="1">
+      </div>
+      <div class="input-group">
+        <label>size (bytes)</label>
+        <input type="number" id="size" value="4096" min="0" step="1">
+      </div>
+      <div class="input-group">
+        <label>prev_queue_len_1, 2, 3</label>
+        <div class="input-row">
+          <input type="number" id="prev_queue_len_1" value="1" min="0">
+          <input type="number" id="prev_queue_len_2" value="2" min="0">
+          <input type="number" id="prev_queue_len_3" value="1" min="0">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>prev_latency_1, 2, 3 (µs)</label>
+        <div class="input-row">
+          <input type="number" id="prev_latency_1" value="100" min="0">
+          <input type="number" id="prev_latency_2" value="150" min="0">
+          <input type="number" id="prev_latency_3" value="120" min="0">
+        </div>
+      </div>
+      <div class="input-group">
+        <label>prev_throughput_1, 2, 3 (B/µs)</label>
+        <div class="input-row">
+          <input type="number" id="prev_throughput_1" value="40" min="0">
+          <input type="number" id="prev_throughput_2" value="30" min="0">
+          <input type="number" id="prev_throughput_3" value="35" min="0">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Activation color range (min, max)</label>
+        <div class="input-row">
+          <input type="number" id="activation-min" value="0" step="any">
+          <input type="number" id="activation-max" value="1" step="any">
+        </div>
+      </div>
+
+      <div class="load-weights">
+        <label>Or load custom weights (JSON):</label>
+        <input type="file" id="weights-file" accept=".json">
+      </div>
+      <div class="load-weights">
+        <label>Load activation range (JSON):</label>
+        <input type="file" id="range-file" accept=".json">
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="viz-container">
+        <div id="output-badge" class="output-badge accept">
+          ACCEPT
+          <div class="output-prob" id="output-prob">p = 0.00</div>
+        </div>
+        <canvas id="network-canvas" width="1000" height="560"></canvas>
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-swatch" style="background: #0d47a1;"></div>
+            Low (0)
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch" style="background: #26a69a;"></div>
+            Mid
+          </div>
+          <div class="legend-item">
+            <div class="legend-swatch" style="background: #ffeb3b;"></div>
+            High (1)
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const INPUT_FEATURES = [
+      'queue_len', 'io_type', 'size',
+      'prev_queue_len_1', 'prev_queue_len_2', 'prev_queue_len_3',
+      'prev_latency_1', 'prev_latency_2', 'prev_latency_3',
+      'prev_throughput_1', 'prev_throughput_2', 'prev_throughput_3'
+    ];
+
+    const ARCH = { input: 12, hidden1: 128, hidden2: 16, output: 1 };
+
+    // Default demo weights (small random init for visualization)
+    function getDefaultWeights() {
+      const r = (scale) => () => (Math.random() - 0.5) * scale;
+      return {
+        input_features: INPUT_FEATURES,
+        scaler_min: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        scaler_scale: [10, 1, 65536, 10, 10, 10, 1000, 1000, 1000, 100, 100, 100],
+        layers: [
+          { name: 'dense_1', weights: [...Array(128)].map(() => [...Array(12)].map(r(0.3))), bias: [...Array(128)].map(r(0.1)) },
+          { name: 'dense_2', weights: [...Array(16)].map(() => [...Array(128)].map(r(0.15))), bias: [...Array(16)].map(r(0.1)) },
+          { name: 'dense_3', weights: [...Array(1)].map(() => [...Array(16)].map(r(0.2))), bias: [0] }
+        ]
+      };
+    }
+
+    let weights = getDefaultWeights();
+
+    function getInputs() {
+      return INPUT_FEATURES.map(id => {
+        const el = document.getElementById(id);
+        return el ? parseFloat(el.value) || 0 : 0;
+      });
+    }
+
+    function getActivationRange() {
+      const minEl = document.getElementById('activation-min');
+      const maxEl = document.getElementById('activation-max');
+      return {
+        scale_min: minEl ? parseFloat(minEl.value) || 0 : 0,
+        scale_max: maxEl ? parseFloat(maxEl.value) || 0 : 0
+      };
+    }
+
+    function setActivationRange(min, max) {
+      const minEl = document.getElementById('activation-min');
+      const maxEl = document.getElementById('activation-max');
+      if (minEl) minEl.value = min;
+      if (maxEl) maxEl.value = max;
+    }
+
+    function normalize(x) {
+      return x.map((v, i) => {
+        if (!Number.isFinite(v)) return 0;
+        const range = weights.scaler_scale[i];
+        if (!Number.isFinite(range) || range === 0) return 0;
+        const n = (v - weights.scaler_min[i]) / range;
+        return Number.isFinite(n) ? n : 0;
+      });
+    }
+
+    function relu(x) { return Number.isFinite(x) ? Math.max(0, x) : 0; }
+    function sigmoid(x) { return Number.isFinite(x) ? 1 / (1 + Math.exp(-x)) : 0; }
+
+    // Keras Dense stores weights as (input_dim, units): W[j][i] = weight from input j to output i
+    function matmulVec(W, b, x) {
+      const numOutputs = b.length;
+      return Array.from({ length: numOutputs }, (_, i) => {
+        let sum = b[i];
+        for (let j = 0; j < x.length; j++) {
+          sum += W[j][i] * x[j];
+        }
+        return Number.isFinite(sum) ? sum : 0;
+      });
+    }
+
+    function inference(inputs) {
+      const norm = normalize(inputs);
+      const l1 = matmulVec(weights.layers[0].weights, weights.layers[0].bias, norm).map(relu);
+      const l2 = matmulVec(weights.layers[1].weights, weights.layers[1].bias, l1).map(relu);
+      const l3 = matmulVec(weights.layers[2].weights, weights.layers[2].bias, l2);
+      const out = sigmoid(l3[0]);
+      return {
+        input: norm,
+        hidden1: l1,
+        hidden2: l2,
+        output: out,
+        logit: l3[0]
+      };
+    }
+
+    // Heatmap: dark blue (0) -> teal -> bright yellow (1)
+    // Maps v from [scaleMin, scaleMax] to [0, 1] for color
+    function activationToColor(v, scaleMin, scaleMax) {
+      if (!Number.isFinite(v)) return 'rgb(33, 38, 45)';  // neutral dark
+      const range = scaleMax - scaleMin;
+      const t = range > 0 ? Math.max(0, Math.min(1, (v - scaleMin) / range)) : 0;
+      const c0 = { r: 13, g: 71, b: 161 };   // #0d47a1
+      const c1 = { r: 38, g: 166, b: 154 };  // #26a69a
+      const c2 = { r: 255, g: 235, b: 59 };  // #ffeb3b
+      let r, g, b;
+      if (t < 0.5) {
+        const s = t * 2;
+        r = Math.round(c0.r + s * (c1.r - c0.r));
+        g = Math.round(c0.g + s * (c1.g - c0.g));
+        b = Math.round(c0.b + s * (c1.b - c0.b));
+      } else {
+        const s = (t - 0.5) * 2;
+        r = Math.round(c1.r + s * (c2.r - c1.r));
+        g = Math.round(c1.g + s * (c2.g - c1.g));
+        b = Math.round(c1.b + s * (c2.b - c1.b));
+      }
+      return `rgb(${r},${g},${b})`;
+    }
+
+    function drawNetwork(activations) {
+      const canvas = document.getElementById('network-canvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.fillStyle = '#0d1117';
+      ctx.fillRect(0, 0, w, h);
+
+      const cellSize = 26;
+      const gap = 2;
+      const padding = 24;
+      const topLabelSpace = 40;  // space for column labels above Hidden 1
+
+      const layers = [
+        { n: ARCH.input, acts: activations.input, label: 'Input', cols: 1 },
+        { n: ARCH.hidden1, acts: activations.hidden1, label: 'Hidden 1 (128)', rowsPerColumn: 16 },
+        { n: ARCH.hidden2, acts: activations.hidden2, label: 'Hidden 2 (16)', cols: 1 },
+        { n: ARCH.output, acts: [activations.output], label: 'Output', cols: 1 }
+      ];
+
+      const { scale_min: scaleMin, scale_max: scaleMax } = getActivationRange();
+
+      let x = padding;
+      layers.forEach((layer) => {
+        let cols, rows;
+        if (layer.rowsPerColumn) {
+          rows = layer.rowsPerColumn;
+          cols = Math.ceil(layer.n / rows);
+        } else {
+          cols = layer.cols;
+          rows = Math.ceil(layer.n / cols);
+        }
+        const blockW = cols * (cellSize + gap) - gap;
+        const blockH = rows * (cellSize + gap) - gap;
+        const startY = padding + topLabelSpace + (h - 2 * padding - topLabelSpace - blockH) / 2;
+
+        // Column labels for Hidden 1 — above cells (avoids overlap), rotated 45°
+        if (layer.rowsPerColumn && layer.n > 1) {
+          const topLabelY = startY - 16;
+          ctx.save();
+          ctx.font = '9px JetBrains Mono';
+          ctx.fillStyle = '#6e7681';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          for (let c = 0; c < cols; c++) {
+            const first = c * rows;
+            const last = Math.min(first + rows - 1, layer.n - 1);
+            const label = last > first ? `${first}-${last}` : `${first}`;
+            const colCenter = x + c * (cellSize + gap) + cellSize / 2;
+            ctx.save();
+            ctx.translate(colCenter, topLabelY);
+            ctx.rotate(-Math.PI / 4);
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
+        for (let i = 0; i < layer.n; i++) {
+          let col, row;
+          if (layer.rowsPerColumn) {
+            col = Math.floor(i / rows);
+            row = i % rows;
+          } else {
+            row = Math.floor(i / cols);
+            col = i % cols;
+          }
+          const cx = x + col * (cellSize + gap);
+          const cy = startY + row * (cellSize + gap);
+          const v = layer.acts[i] ?? 0;
+          ctx.fillStyle = activationToColor(v, scaleMin, scaleMax);
+          ctx.fillRect(cx, cy, cellSize, cellSize);
+          ctx.strokeStyle = 'rgba(48, 54, 61, 0.8)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx, cy, cellSize, cellSize);
+        }
+
+        const labelY = startY + blockH + 18;
+
+        ctx.fillStyle = '#8b949e';
+        ctx.font = '12px JetBrains Mono';
+        ctx.textAlign = 'center';
+        ctx.fillText(layer.label, x + blockW / 2, labelY);
+
+        x += blockW + 40;
+      });
+
+      // Draw heatmap color scale bar
+      const scaleX = w - padding - 120;
+      const scaleY = h - 36;
+      const scaleW = 100;
+      const scaleH = 12;
+      const grad = ctx.createLinearGradient(scaleX, 0, scaleX + scaleW, 0);
+      grad.addColorStop(0, activationToColor(scaleMin, scaleMin, scaleMax));
+      grad.addColorStop(0.5, activationToColor((scaleMin + scaleMax) / 2, scaleMin, scaleMax));
+      grad.addColorStop(1, activationToColor(scaleMax, scaleMin, scaleMax));
+      ctx.fillStyle = grad;
+      ctx.fillRect(scaleX, scaleY, scaleW, scaleH);
+      ctx.strokeStyle = '#30363d';
+      ctx.strokeRect(scaleX, scaleY, scaleW, scaleH);
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '10px JetBrains Mono';
+      ctx.textAlign = 'left';
+      ctx.fillText(scaleMin.toFixed(2), scaleX - 4, scaleY + scaleH + 10);
+      ctx.textAlign = 'right';
+      ctx.fillText(scaleMax.toFixed(2), scaleX + scaleW + 4, scaleY + scaleH + 10);
+    }
+
+    function update() {
+      const inputs = getInputs();
+      const acts = inference(inputs);
+
+      const badge = document.getElementById('output-badge');
+      const reject = acts.output >= 0.5;
+      badge.className = 'output-badge ' + (reject ? 'reject' : 'accept');
+      badge.innerHTML = (reject ? 'REJECT' : 'ACCEPT') + '<div class="output-prob">p = ' + acts.output.toFixed(3) + '</div>';
+
+      drawNetwork(acts);
+    }
+
+    INPUT_FEATURES.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', update);
+    });
+    ['activation-min', 'activation-max'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', update);
+    });
+
+    let modelManifest = { models: [] };
+
+    function loadWeightsFromData(data) {
+      if (data.layers && data.scaler_min) {
+        weights = data;
+        update();
+        console.log('Weights loaded');
+      }
+    }
+
+    function populateModelDropdown() {
+      const sel = document.getElementById('model-select');
+      sel.innerHTML = '<option value="">-- Demo (random) --</option>';
+      modelManifest.models.forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m.file;
+        opt.textContent = m.label;
+        sel.appendChild(opt);
+      });
+    }
+
+    function loadModelWeights(file) {
+      fetch('weights/' + file)
+        .then((r) => r.json())
+        .then((data) => {
+          loadWeightsFromData(data);
+        })
+        .catch((err) => {
+          console.error('Failed to load:', file, err);
+        });
+    }
+
+    fetch('weights/manifest.json')
+      .then((r) => r.json())
+      .then((data) => {
+        modelManifest = data;
+        populateModelDropdown();
+        if (data.models.length > 0) {
+          loadModelWeights(data.models[0].file);
+          document.getElementById('model-select').value = data.models[0].file;
+        }
+      })
+      .catch(() => {
+        document.getElementById('model-select').innerHTML = '<option value="">-- Demo (random) --</option>';
+      });
+
+    document.getElementById('model-select').addEventListener('change', (e) => {
+      const file = e.target.value;
+      if (file) {
+        loadModelWeights(file);
+      } else {
+        weights = getDefaultWeights();
+        update();
+      }
+    });
+
+    document.getElementById('weights-file').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const data = JSON.parse(r.result);
+          loadWeightsFromData(data);
+          document.getElementById('model-select').value = '';
+        } catch (err) {
+          console.error('Invalid weights JSON', err);
+        }
+      };
+      r.readAsText(f);
+    });
+
+    document.getElementById('range-file').addEventListener('change', (e) => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const data = JSON.parse(r.result);
+          if (data.scale_min != null && data.scale_max != null) {
+            setActivationRange(data.scale_min, data.scale_max);
+            update();
+            console.log('Activation range loaded:', data);
+          }
+        } catch (err) {
+          console.error('Invalid range JSON', err);
+        }
+      };
+      r.readAsText(f);
+    });
+
+    // activation_range.json can be loaded manually via the file input; default stays 0–1
+
+    update();
+  </script>
+</body>
+</html>
